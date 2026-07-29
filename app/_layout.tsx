@@ -1,56 +1,75 @@
-import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider, useAuth } from '@/contexts/GameContext';
+import { Colors } from '@/constants/Colors';
+import { Loading } from '@/components/ui/Primitives';
+import { ensureNotificationPermission } from '@/lib/notifications';
+import { patchAlertForWeb } from '@/lib/alert';
 
-import { useColorScheme } from '@/components/useColorScheme';
+patchAlertForWeb();
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+function RootNavigator() {
+  const { session, loading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
+    ensureNotificationPermission().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    const root = segments[0];
+    const inAuth = root === 'login';
+    if (!session && !inAuth) {
+      router.replace('/login');
+      return;
     }
-  }, [loaded]);
+    if (!session) return;
 
-  if (!loaded) {
-    return null;
-  }
+    if (root === 'territory' || root === 'login') return;
 
-  return <RootLayoutNav />;
-}
+    if (session.role === 'admin' && root !== '(admin)') {
+      router.replace('/(admin)');
+    } else if (session.role === 'oec' && root !== '(oec)') {
+      router.replace('/(oec)');
+    } else if (
+      (session.role === 'player' || session.role === 'ec') &&
+      root !== '(player)'
+    ) {
+      router.replace('/(player)/map');
+    }
+  }, [session, loading, segments, router]);
 
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  if (loading) return <Loading />;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+    <>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: Colors.bg },
+        }}
+      >
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="(player)" options={{ headerShown: false }} />
+        <Stack.Screen name="(oec)" options={{ headerShown: false }} />
+        <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+        <Stack.Screen name="territory/[id]" options={{ headerShown: false }} />
       </Stack>
-    </ThemeProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
