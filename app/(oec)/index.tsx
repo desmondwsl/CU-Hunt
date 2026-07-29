@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth, useGameState } from '@/contexts/GameContext';
 import { Colors, TeamColors } from '@/constants/Colors';
-import { ITEMS } from '@/constants/items';
 import { BIG_TEAMS } from '@/constants/territories';
 import { Button, Card, Chip, Muted, FullScreen, Title } from '@/components/ui/Primitives';
+import { LuckyDrawModal } from '@/components/LuckyDrawWheel';
 import { gameStore } from '@/lib/gameStore';
 import type { Difficulty } from '@/lib/types';
 import type { BigTeamCode } from '@/constants/Colors';
+import type { ItemId } from '@/constants/items';
 
 export default function OecStation() {
   const { session, logout } = useAuth();
@@ -18,6 +19,10 @@ export default function OecStation() {
   const [num, setNum] = useState(1);
   const [difficulty, setDifficulty] = useState<Difficulty>('easy');
   const [busy, setBusy] = useState(false);
+  const [drawShow, setDrawShow] = useState<{
+    draw: ItemId | 0;
+    teamId: string;
+  } | null>(null);
 
   if (!territory) {
     return (
@@ -41,15 +46,8 @@ export default function OecStation() {
       Alert.alert('無法攻佔', result.error);
       return;
     }
-    const drawLabel =
-      result.draw === 0 || result.draw === undefined
-        ? '抽唔到'
-        : ITEMS[result.draw as 1 | 2 | 3 | 4 | 5 | 6].name;
-    const body =
-      'message' in result && typeof result.message === 'string' && result.message
-        ? result.message
-        : `錦囊抽獎：${drawLabel}`;
-    Alert.alert('攻佔成功', body);
+    const draw = (result.draw ?? 0) as ItemId | 0;
+    setDrawShow({ draw, teamId: smallTeamId });
   };
 
   const color = territory.ownerBigTeam ? TeamColors[territory.ownerBigTeam] : TeamColors.empty;
@@ -57,6 +55,13 @@ export default function OecStation() {
 
   return (
     <FullScreen>
+      <LuckyDrawModal
+        visible={!!drawShow}
+        draw={drawShow?.draw ?? 0}
+        territoryName={territory.name}
+        teamId={drawShow?.teamId}
+        onDone={() => setDrawShow(null)}
+      />
       <ScrollView contentContainerStyle={{ gap: 14, paddingBottom: 40 }}>
         <View>
           <Muted>{session?.displayName}</Muted>

@@ -28,8 +28,9 @@ In Supabase SQL editor, run in order:
 2. `supabase/seed.sql`
 3. `supabase/migrations/002_rls_and_rpcs.sql`
 4. `supabase/migrations/003_scoring_and_binding.sql` ← linkages fix + OEC/EC binding
+5. `supabase/migrations/004_bank_hold_minutes.sql` ← bank scores when territory changes hands
 
-If you already ran 001–002 earlier, just run **003**.
+If you already ran earlier migrations, just run any you haven't applied yet (at least **004** for the score handoff fix).
 
 ### 3. Run
 
@@ -61,6 +62,7 @@ update role_pins set pin = 'NEW_PIN' where role = 'admin';
 
 - 25 territories, 3 大組 × 6 細組
 - Easy 50 pts/min · Hard 70 pts/min while held
+- When a territory is lost, held minutes are **banked** so the previous 細組 keeps those points
 - 15 min cooldown after capture
 - Cannot capture own 大組 territory
 - Capture / item / settle cutoffs in `game_settings`

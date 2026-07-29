@@ -4,6 +4,7 @@ import type { ItemId } from '@/constants/items';
 import { DEFAULT_PINS, TERRITORIES } from '@/constants/territories';
 import {
   adjustBonus,
+  bankHeldMinutes,
   computeScores,
   createInitialState,
   grantRelic,
@@ -304,12 +305,24 @@ class GameStore {
       await this.refreshFromRemote();
       return;
     }
+    const prev = this.state.territories.find((t) => t.id === territoryId);
+    const ownershipChanging =
+      prev &&
+      (patch.ownerBigTeam !== undefined ||
+        patch.ownerSmallTeamId !== undefined ||
+        patch.capturedAt !== undefined ||
+        patch.difficulty !== undefined);
+    let smallTeams = this.state.smallTeams;
+    if (ownershipChanging && prev) {
+      smallTeams = bankHeldMinutes(smallTeams, prev, new Date());
+    }
     const territories = this.state.territories.map((t) =>
       t.id === territoryId ? { ...t, ...patch } : t,
     );
     await this.persistLocal({
       ...this.state,
       territories,
+      smallTeams,
       updatedAt: new Date().toISOString(),
     });
   }

@@ -120,9 +120,10 @@ export function minutesHeld(capturedAt: string | null, until: Date, frozenAt?: D
 
 export function computeScores(state: GameState, now = new Date()) {
   const settleAt = parseHHMM(state.settings.settleTime, state.settings.huntDate);
-  const freezeAt = state.settings.scoreFrozen || now >= settleAt ? (now < settleAt ? now : settleAt) : now;
+  // Freeze clock: past settle → settle time; otherwise live "now"
+  // (scoreFrozen still uses now unless a frozen-at timestamp exists — banking preserves past holds)
+  const freezeAt = now >= settleAt ? settleAt : now;
 
-  // Accrue territory minutes into display (not mutating stored minutes — compute live)
   type Acc = {
     easyMin: number;
     hardMin: number;
@@ -138,6 +139,17 @@ export function computeScores(state: GameState, now = new Date()) {
     赬: { easyMin: 0, hardMin: 0, held: 0, linkage: 0, curse: 0, event: 0 },
   };
 
+  // Banked minutes from past holds (survive territory handoffs)
+  for (const st of state.smallTeams) {
+    const acc = (bySmall[st.id] ??= { easyMin: 0, hardMin: 0, held: 0 });
+    acc.easyMin += st.territoryMinutesEasy;
+    acc.hardMin += st.territoryMinutesHard;
+    byBig[st.bigTeam].easyMin += st.territoryMinutesEasy;
+    byBig[st.bigTeam].hardMin += st.territoryMinutesHard;
+    byBig[st.bigTeam].event += st.bonusPoints;
+  }
+
+  // Live minutes from territories currently held
   for (const t of state.territories) {
     if (!t.ownerBigTeam || !t.ownerSmallTeamId || !t.difficulty || !t.capturedAt) continue;
     const mins = minutesHeld(t.capturedAt, freezeAt);
@@ -155,11 +167,6 @@ export function computeScores(state: GameState, now = new Date()) {
   }
   for (const c of state.activeCurses) {
     byBig[c.bigTeam].curse += c.points;
-  }
-
-  // Event / bonus points stored on small teams
-  for (const st of state.smallTeams) {
-    byBig[st.bigTeam].event += st.bonusPoints;
   }
 
   const smallScores = state.smallTeams.map((st) => {
@@ -184,7 +191,6 @@ export function computeScores(state: GameState, now = new Date()) {
     const b = byBig[bt.code];
     const territoryPoints =
       b.easyMin * POINTS_PER_MIN.easy + b.hardMin * POINTS_PER_MIN.hard;
-    // Sum small-team adjusted scores for fairness with penalties, plus big-team linkage/curse
     const smallSum = smallScores
       .filter((s) => s.bigTeam === bt.code)
       .reduce((sum, s) => sum + s.score, 0);
@@ -202,6 +208,24 @@ export function computeScores(state: GameState, now = new Date()) {
   }).sort((a, b) => b.total - a.total);
 
   return { smallScores, bigScores, freezeAt };
+}
+
+/** Credit previous holder for minutes held before a handoff / clear. */
+export function bankHeldMinutes(
+  smallTeams: SmallTeamState[],
+  terr: Pick<TerritoryState, 'ownerSmallTeamId' | 'difficulty' | 'capturedAt'>,
+  until: Date,
+): SmallTeamState[] {
+  if (!terr.ownerSmallTeamId || !terr.difficulty || !terr.capturedAt) return smallTeams;
+  const mins = minutesHeld(terr.capturedAt, until);
+  if (mins <= 0) return smallTeams;
+  return smallTeams.map((st) => {
+    if (st.id !== terr.ownerSmallTeamId) return st;
+    if (terr.difficulty === 'easy') {
+      return { ...st, territoryMinutesEasy: st.territoryMinutesEasy + mins };
+    }
+    return { ...st, territoryMinutesHard: st.territoryMinutesHard + mins };
+  });
 }
 
 function drawItem(): ItemId | 0 {
@@ -359,6 +383,9 @@ export function submitCapture(
   const cooldownUntil = new Date(now.getTime() + COOLDOWN_MINUTES * 60000).toISOString();
   const draw = drawItem();
 
+  // Bank previous holder's minutes so their score survives the handoff
+  let smallTeams = bankHeldMinutes(state.smallTeams, terr, now);
+
   const territories = state.territories.map((t) =>
     t.id === terr.id
       ? {
@@ -372,7 +399,7 @@ export function submitCapture(
       : t,
   );
 
-  const smallTeams = state.smallTeams.map((st) => {
+  smallTeams = smallTeams.map((st) => {
     if (st.id !== team.id) return st;
     const next = { ...st, taskIds: st.taskIds.includes(terr.id) ? st.taskIds : [...st.taskIds, terr.id] };
     if (usingJam) next.hasJamYe = false;

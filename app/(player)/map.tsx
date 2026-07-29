@@ -187,6 +187,7 @@ export default function MapScreen() {
                   }
                   onCalloutPress={() => router.push(`/territory/${t.id}`)}
                   onPress={() => router.push(`/territory/${t.id}`)}
+                  anchor={{ x: 0.5, y: 0.5 }}
                 >
                   <View style={[styles.pin, { backgroundColor: color, borderColor: Colors.white }]}>
                     <Text style={styles.pinText}>{t.id}</Text>
@@ -281,9 +282,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   pin: {
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
+    minWidth: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
   },
   pinText: {
     color: Colors.white,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
   },
   mapActions: {

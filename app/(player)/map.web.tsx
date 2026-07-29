@@ -55,6 +55,14 @@ function WebCampusMap({
         link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
         document.head.appendChild(link);
       }
+      // Hide Leaflet's default icon chrome for custom numbered pins
+      if (!document.getElementById('cuhunt-leaflet-pin-css')) {
+        const style = document.createElement('style');
+        style.id = 'cuhunt-leaflet-pin-css';
+        style.textContent =
+          '.cuhunt-pin{background:transparent!important;border:none!important}';
+        document.head.appendChild(style);
+      }
       if (cancelled || !containerRef.current || mapRef.current) return;
 
       const map = L.map(containerRef.current, {
@@ -94,14 +102,20 @@ function WebCampusMap({
       group.clearLayers();
       for (const t of territories) {
         const color = pinColor(t);
-        const marker = L.circleMarker([t.lat, t.lng], {
-          radius: 11,
-          color: '#fff',
-          weight: 2,
-          fillColor: color,
-          fillOpacity: 1,
+        const icon = L.divIcon({
+          className: 'cuhunt-pin',
+          html: `<div style="
+            min-width:32px;height:32px;padding:0 7px;box-sizing:border-box;
+            border-radius:16px;background:${color};border:2px solid #fff;
+            color:#fff;font:800 13px/28px system-ui,sans-serif;
+            text-align:center;display:flex;align-items:center;justify-content:center;
+            box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:pointer;
+          ">${t.id}</div>`,
+          iconSize: [36, 32],
+          iconAnchor: [18, 16],
         });
-        marker.bindTooltip(`${t.id}. ${t.name}`, { direction: 'top', offset: [0, -8] });
+        const marker = L.marker([t.lat, t.lng], { icon });
+        marker.bindTooltip(`${t.id}. ${t.name}`, { direction: 'top', offset: [0, -14] });
         marker.on('click', () => onSelectRef.current(t.id));
         marker.addTo(group);
       }
