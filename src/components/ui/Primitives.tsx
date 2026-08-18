@@ -185,3 +185,23 @@ export function Loading() {
 export function Muted({ children }: { children: ReactNode }) {
   return <p className="muted">{children}</p>;
 }
+
+export function DemoModeBanner() {
+  return (
+    <div
+      className="card"
+      style={{
+        borderColor: 'var(--danger)',
+        background: '#FEF2F2',
+        marginBottom: 4,
+      }}
+    >
+      <p style={{ margin: 0, color: 'var(--danger)', fontWeight: 800 }}>本機 Demo 模式</p>
+      <p className="muted" style={{ margin: '6px 0 0' }}>
+        未設定 Supabase。顏色、突發、佔領、分數只留喺呢部瀏覽器，唔會同步。Vercel 請喺 Project →
+        Settings → Environment Variables 加 <code>VITE_SUPABASE_URL</code> 同{' '}
+        <code>VITE_SUPABASE_ANON_KEY</code>，然後 <strong>Redeploy</strong>。
+      </p>
+    </div>
+  );
+}

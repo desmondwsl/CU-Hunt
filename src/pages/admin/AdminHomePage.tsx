@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, useGameState, useScores, useTeamColors } from '@/contexts/GameContext';
 import { Colors, TeamColors } from '@/constants/Colors';
-import { Button, Card, Field, Muted, Screen, Title } from '@/components/ui/Primitives';
+import { Button, Card, Field, Muted, Screen, Title, DemoModeBanner } from '@/components/ui/Primitives';
 import { gameStore } from '@/lib/gameStore';
 import { alert } from '@/lib/alert';
 import type { BigTeamCode } from '@/constants/Colors';
@@ -40,6 +40,12 @@ function TeamColorCard() {
   const save = async () => {
     setSaving(true);
     try {
+      if (!gameStore.usingRemote) {
+        alert(
+          '未連接 Supabase',
+          '呢個網站係 Demo 模式，顏色只會留喺呢部手機／電腦，唔會寫入資料庫。請喺 Vercel 設定環境變數後 Redeploy。',
+        );
+      }
       for (const code of ['梟', '焽', '赬'] as const) {
         const live = state.bigTeams.find((b) => b.code === code)?.color ?? TeamColors[code];
         if (draft[code].toLowerCase() !== live.toLowerCase()) {
@@ -117,7 +123,7 @@ function TeamColorCard() {
 }
 
 export default function AdminHomePage() {
-  const { logout } = useAuth();
+  const { logout, usingRemote } = useAuth();
   const navigate = useNavigate();
   const state = useGameState();
   const { bigScores } = useScores();
@@ -234,6 +240,7 @@ export default function AdminHomePage() {
     <Screen tabs>
       <div className="stack-gap" style={{ gap: 12, paddingBottom: 40 }}>
         <Title>OC Dashboard</Title>
+        {!usingRemote ? <DemoModeBanner /> : null}
         <Muted>
           {state.settings.paused ? '已暫停' : '進行中'} ·{' '}
           {state.settings.scoreFrozen ? '分數已凍結' : '分數累計中'} · 更新{' '}

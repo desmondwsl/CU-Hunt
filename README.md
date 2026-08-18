@@ -43,6 +43,18 @@ Open the URL Vite prints (default `http://localhost:5173`). On a phone, use your
 
 Login shows **已連接 Supabase** when env is loaded.
 
+## Deploy (Vercel)
+
+`.env` is not on GitHub (correct). Vercel must get the keys at **build** time, or the live site stays in demo mode and **nothing writes to Supabase**.
+
+1. Vercel → Project → **Settings → Environment Variables**
+2. Add (Production + Preview):
+   - `VITE_SUPABASE_URL` = your project URL
+   - `VITE_SUPABASE_ANON_KEY` = the `anon` `public` key from Supabase → Project Settings → API
+3. **Deployments → … on the latest deploy → Redeploy** (required; adding vars does not update an old build)
+
+Login must then say **已連接 Supabase（多人即時同步）**. If it still says 未設定, the names are wrong or you did not redeploy.
+
 ## Roles & PINs
 
 PINs live in Supabase table `role_pins`. Defaults after seed:
